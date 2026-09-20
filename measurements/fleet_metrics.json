@@ -1,0 +1,8 @@
+{
+  "policy_propagation_seconds": 0,
+  "fleet_visibility_pct": 0,
+  "policy_violation_detection_seconds": 0,
+  "manual_equivalent_minutes": 0,
+  "control_plane_overhead_ms": 0,
+  "agents_in_fleet": 7
+}

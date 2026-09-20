@@ -1,0 +1,24 @@
+version: "v2"
+name: "Supply Chain Policy v2"
+description: "Enhanced supply chain governance — adds trade restrictions"
+
+rules:
+  max_supplier_risk_tier: "medium"
+  require_audit_for_tier: "high"
+  inventory_alert_threshold_days: 10
+  quality_defect_rate_threshold: 0.03
+  logistics_max_cost_usd: 8000
+  trade_compliance:
+    require_license_above_usd: 10000
+    restricted_hs_codes:
+      - "8471.30"
+      - "8542.31"
+    restricted_origin_countries:
+      - "XX"
+      - "YY"
+  risk_escalation_threshold: 60
+
+thresholds:
+  supplier_spend_review_usd: 250000
+  demand_forecast_confidence_min: 0.7
+  quality_hold_defect_rate: 0.05

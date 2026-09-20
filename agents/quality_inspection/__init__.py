@@ -1,0 +1,3 @@
+from agents.quality_inspection.agent import build_harness
+
+__all__ = ["build_harness"]

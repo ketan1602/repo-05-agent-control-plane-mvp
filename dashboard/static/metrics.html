@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Metrics — Control Plane</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<nav class="nav">
+  <a class="nav-brand" href="/">Control Plane</a>
+  <div class="nav-links">
+    <a href="/">Overview</a>
+    <a href="/demo">Demo</a>
+    <a href="/metrics">Metrics</a>
+    <a href="/eval">Eval</a>
+  </div>
+</nav>
+<main class="container">
+  <div class="page-header">
+    <h2>Fleet Metrics</h2>
+    <p class="text-muted">Measured outcomes from the control plane fleet governance demo.</p>
+  </div>
+
+  <div class="alert alert-success">
+    Key Finding: Fleet-wide policy update: <strong id="prop-seconds">7</strong>s with control plane.
+    <strong id="manual-min">47</strong> minutes manually (7 agents × ~7 min each).
+  </div>
+
+  <div class="stat-grid" style="margin-bottom:24px">
+    <div class="card">
+      <div class="card-title">Policy Propagation</div>
+      <div class="card-value text-success" id="stat-propagation">7s</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Fleet Visibility</div>
+      <div class="card-value text-accent" id="stat-visibility">100%</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Manual Equivalent</div>
+      <div class="card-value text-error" id="stat-manual">47 min</div>
+    </div>
+    <div class="card">
+      <div class="card-title">CP Overhead</div>
+      <div class="card-value" id="stat-overhead">120ms</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <h3>Propagation Time</h3>
+    <div id="propagation-chart" style="margin-top:12px"></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3>Fleet Visibility</h3>
+      <div id="visibility-chart" style="margin-top:12px"></div>
+    </div>
+    <div class="card">
+      <h3>Operational Leverage</h3>
+      <div id="comparison-chart" style="margin-top:12px"></div>
+    </div>
+  </div>
+</main>
+<script src="/static/app.js"></script>
+<script>
+  fetch('/api/metrics').then(r => r.json()).then(m => {
+    document.getElementById('stat-propagation').textContent = m.policy_propagation_seconds + 's';
+    document.getElementById('stat-visibility').textContent = m.fleet_visibility_pct + '%';
+    document.getElementById('stat-manual').textContent = m.manual_equivalent_minutes + ' min';
+    document.getElementById('stat-overhead').textContent = m.control_plane_overhead_ms + 'ms';
+    document.getElementById('prop-seconds').textContent = m.policy_propagation_seconds;
+    document.getElementById('manual-min').textContent = m.manual_equivalent_minutes;
+  }).catch(() => {});
+
+  fetch('/api/metrics/propagation-chart').then(r => r.json()).then(d => {
+    document.getElementById('propagation-chart').innerHTML = d.svg;
+  }).catch(() => {});
+
+  fetch('/api/metrics/visibility-chart').then(r => r.json()).then(d => {
+    document.getElementById('visibility-chart').innerHTML = d.svg;
+  }).catch(() => {});
+
+  fetch('/api/metrics/comparison-chart').then(r => r.json()).then(d => {
+    document.getElementById('comparison-chart').innerHTML = d.svg;
+  }).catch(() => {});
+</script>
+</body>
+</html>

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo — Control Plane</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<nav class="nav">
+  <a class="nav-brand" href="/">Control Plane</a>
+  <div class="nav-links">
+    <a href="/">Overview</a>
+    <a href="/demo">Demo</a>
+    <a href="/metrics">Metrics</a>
+    <a href="/eval">Eval</a>
+  </div>
+</nav>
+<main class="container">
+  <div class="page-header">
+    <h2>Live Fleet Demo</h2>
+    <p class="text-muted">7 supply chain agents governed by a shared control plane. Watch policy propagate in real time.</p>
+  </div>
+
+  <div style="display:flex; gap:12px; margin-bottom:20px; align-items:center; flex-wrap:wrap">
+    <button class="btn btn-secondary" onclick="initFleet()">Initialize Fleet</button>
+    <button id="btn-update-v2" class="btn btn-primary" onclick="triggerUpdate('v2')" disabled>Trigger Policy v2</button>
+    <button id="btn-reset" class="btn btn-secondary" onclick="resetDemo()" disabled>Reset to v1</button>
+    <span id="policy-badge" class="badge badge-muted">Policy: v1</span>
+    <span id="propagation-status" class="text-muted" style="font-size:13px"></span>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px">
+      <h3 style="margin:0">Fleet Status</h3>
+      <span id="confirmed-count" class="text-muted" style="font-size:13px">0 / 0 confirmed</span>
+    </div>
+    <table id="fleet-table">
+      <thead>
+        <tr>
+          <th>Agent</th>
+          <th>Version</th>
+          <th>Policy</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="fleet-tbody">
+        <tr><td colspan="4" class="text-muted">Click "Initialize Fleet" to register agents.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div id="timer-section" style="display:none" class="card">
+    <div class="card-title">Propagation Timer</div>
+    <div class="propagation-timer" id="timer">0.0s</div>
+    <p id="timer-msg" class="text-muted" style="font-size:13px; margin-top:4px">
+      Distributing policy to fleet…
+    </p>
+  </div>
+</main>
+<script src="/static/app.js"></script>
+<script>
+let pollInterval = null;
+let propagationStarted = null;
+let timerInterval = null;
+
+async function initFleet() {
+  const r = await fetch('/api/demo/register-fleet', {method: 'POST'});
+  const d = await r.json();
+  document.getElementById('btn-update-v2').disabled = false;
+  document.getElementById('btn-reset').disabled = false;
+  renderFleet(d);
+  startPolling();
+}
+
+async function triggerUpdate(version) {
+  propagationStarted = Date.now();
+  document.getElementById('timer-section').style.display = '';
+  document.getElementById('timer-msg').textContent = 'Distributing policy to fleet…';
+  startTimerDisplay();
+  await fetch('/api/demo/trigger-policy-update', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({version}),
+  });
+  document.getElementById('policy-badge').textContent = 'Policy: ' + version;
+  document.getElementById('policy-badge').className = 'badge badge-warning';
+}
+
+async function resetDemo() {
+  clearInterval(timerInterval);
+  document.getElementById('timer-section').style.display = 'none';
+  document.getElementById('propagation-status').textContent = '';
+  await fetch('/api/demo/reset', {method: 'POST'});
+  document.getElementById('policy-badge').textContent = 'Policy: v1';
+  document.getElementById('policy-badge').className = 'badge badge-muted';
+  document.getElementById('btn-update-v2').disabled = false;
+}
+
+function startPolling() {
+  if (pollInterval) clearInterval(pollInterval);
+  pollInterval = setInterval(pollFleet, 1000);
+}
+
+async function pollFleet() {
+  const r = await fetch('/api/demo/fleet-status');
+  const d = await r.json();
+  renderFleet(d);
+  const confirmed = d.confirmed_agents ?? 0;
+  const total = d.total_agents ?? 0;
+  if (propagationStarted && confirmed === total && total > 0) {
+    const elapsed = ((Date.now() - propagationStarted) / 1000).toFixed(1);
+    clearInterval(timerInterval);
+    document.getElementById('timer').textContent = elapsed + 's';
+    document.getElementById('timer-msg').textContent = `All ${total} agents confirmed in ${elapsed}s`;
+    document.getElementById('policy-badge').className = 'badge badge-success';
+    document.getElementById('propagation-status').textContent = `Propagated in ${elapsed}s`;
+    propagationStarted = null;
+    document.getElementById('btn-update-v2').disabled = true;
+  }
+}
+
+function renderFleet(data) {
+  const tbody = document.getElementById('fleet-tbody');
+  const agents = data.agents || [];
+  const confirmed = (data.confirmed_agents ?? 0);
+  const total = (data.total_agents ?? 0);
+  document.getElementById('confirmed-count').textContent = `${confirmed} / ${total} confirmed`;
+  if (!agents.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="text-muted">No agents registered.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = agents.map(a => `
+    <tr>
+      <td style="font-family:monospace">${a.agent_name}</td>
+      <td>${a.agent_version}</td>
+      <td><span class="badge badge-accent">${a.policy_version}</span></td>
+      <td>${formatStatus(a.status)}</td>
+    </tr>
+  `).join('');
+}
+
+function startTimerDisplay() {
+  clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    if (!propagationStarted) return;
+    const elapsed = ((Date.now() - propagationStarted) / 1000).toFixed(1);
+    document.getElementById('timer').textContent = elapsed + 's';
+  }, 100);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+version: "v1"
+name: "Supply Chain Policy v1"
+description: "Baseline supply chain governance policy"
+
+rules:
+  max_supplier_risk_tier: "high"
+  require_audit_for_tier: "critical"
+  inventory_alert_threshold_days: 7
+  quality_defect_rate_threshold: 0.05
+  logistics_max_cost_usd: 10000
+  trade_compliance:
+    require_license_above_usd: 25000
+    restricted_hs_codes: []
+  risk_escalation_threshold: 75
+
+thresholds:
+  supplier_spend_review_usd: 500000
+  demand_forecast_confidence_min: 0.6
+  quality_hold_defect_rate: 0.10

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eval — Control Plane</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<nav class="nav">
+  <a class="nav-brand" href="/">Control Plane</a>
+  <div class="nav-links">
+    <a href="/">Overview</a>
+    <a href="/demo">Demo</a>
+    <a href="/metrics">Metrics</a>
+    <a href="/eval">Eval</a>
+  </div>
+</nav>
+<main class="container">
+  <div class="page-header">
+    <h2>Eval Suite</h2>
+    <p class="text-muted">Validation fixtures for the supply chain agent fleet.</p>
+  </div>
+
+  <div class="alert alert-info" id="eval-note">
+    Set <code>AIREFINERY_API_KEY</code> to run live agent evaluations.
+  </div>
+
+  <div class="stat-grid" style="margin-bottom:24px">
+    <div class="card">
+      <div class="card-title">Total Fixtures</div>
+      <div class="card-value" id="total-fixtures">4</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Agents Covered</div>
+      <div class="card-value" id="agents-covered">4</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Fleet Size</div>
+      <div class="card-value">7</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Eval Fixtures</h3>
+    <table style="margin-top:12px">
+      <thead>
+        <tr>
+          <th>Agent</th>
+          <th>Description</th>
+          <th>Expected Outcome</th>
+        </tr>
+      </thead>
+      <tbody id="fixtures-tbody">
+        <tr><td colspan="3" class="text-muted">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+<script src="/static/app.js"></script>
+<script>
+  fetch('/api/eval/fixtures').then(r => r.json()).then(d => {
+    document.getElementById('total-fixtures').textContent = d.total;
+    const tbody = document.getElementById('fixtures-tbody');
+    tbody.innerHTML = d.fixtures.map(f => `
+      <tr>
+        <td style="font-family:monospace">${f.agent}</td>
+        <td>${f.description}</td>
+        <td><code>${f.expected_outcome}</code></td>
+      </tr>
+    `).join('');
+  }).catch(() => {});
+
+  fetch('/api/eval/summary').then(r => r.json()).then(d => {
+    document.getElementById('agents-covered').textContent = d.agents_covered;
+    document.getElementById('eval-note').textContent = d.note;
+  }).catch(() => {});
+</script>
+</body>
+</html>
