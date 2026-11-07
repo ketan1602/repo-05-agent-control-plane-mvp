@@ -45,5 +45,5 @@ async def eval_summary() -> JSONResponse:
         "total_fixtures": len(_EVAL_FIXTURES),
         "agents_covered": 4,
         "fleet_size": 7,
-        "note": "Run eval suite with AIREFINERY_API_KEY set to execute live agent calls.",
+        "note": "Run eval suite with LLM_API_KEY and LLM_BASE_URL set to execute live agent calls.",
     })

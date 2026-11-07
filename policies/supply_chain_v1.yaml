@@ -8,6 +8,7 @@ rules:
   inventory_alert_threshold_days: 7
   quality_defect_rate_threshold: 0.05
   logistics_max_cost_usd: 10000
+  max_cost_per_run_usd: 1.00
   trade_compliance:
     require_license_above_usd: 25000
     restricted_hs_codes: []

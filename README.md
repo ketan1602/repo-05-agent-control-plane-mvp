@@ -25,7 +25,7 @@ Agents are built on `agents/base.py`. Each of the seven agents (`supplier_evalua
 Frameworks and services:
 
 - Agent graphs: LangGraph
-- LLM calls: AI Refinery through `airefinery-sdk` (`AsyncAIRefinery`), default model `openai/gpt-oss-120b`
+- LLM calls: any OpenAI-compatible chat API through the `openai` client, configured with `LLM_API_KEY`, `LLM_BASE_URL`, and `LLM_MODEL`
 - Lifecycle, retry, I/O validation, audit: `agent-harness-core` (installed from `../agent-harness-core`)
 
 ## Policies
@@ -57,7 +57,7 @@ Requirements: Python 3.11+, and `agent-harness-core` checked out as a sibling di
    cp .env.example .env
    ```
 
-3. Edit `.env` and set `AIREFINERY_API_KEY`. Leave other values at their defaults unless you need to change them. The key is read from the environment only; it is never hardcoded or logged. `.env` is gitignored.
+3. Edit `.env` and set `LLM_API_KEY`, `LLM_BASE_URL`, and `LLM_MODEL`. Fill in the cost assumptions too; the cost model refuses to run without them. Secrets are read from the environment only and never logged. `.env` is gitignored.
 
 ## Run
 
@@ -103,7 +103,9 @@ Control plane endpoints used by the demo:
 | GET | `/fleet/status` | Fleet state |
 | GET | `/policy/current` | Current policy version |
 | POST | `/policy/update` | Distribute a policy version |
+| POST | `/runs/cost` | Report one run's cost; returns `within_budget` or `over_budget` |
 | POST | `/demo/register-fleet` | Reset and seed the seven-agent fleet |
+| POST | `/demo/simulate-runs` | Simulate runs for every agent against the current budget |
 | POST | `/demo/reset` | Clear the fleet |
 
 ## Tests
@@ -121,6 +123,18 @@ The test suite has 30 tests covering agent schemas and harness construction (`te
 ## Known limitations
 
 - The fleet is simulated. There are no seven running agent processes; `seed_fleet()` registers seven records and `distribute_policy()` simulates their confirmation delays.
-- Token usage is not captured by the harness cost tracker, because AI Refinery calls go directly through `AsyncAIRefinery` rather than LangChain callbacks. `cost_usd` reports 0.
+- The harness `cost_usd` field reads 0 for these agents. Its tracker is fed by LangChain callbacks, and the agents call the `openai` client directly. Agent cost comes from the `cost/` package instead.
+- The eval suite runs no live calls. Run costs come from the `POST /demo/simulate-runs` demo, not real agent runs.
+
+## Cost of an agent
+
+The cost of an agent run is more than its tokens. `cost/` follows the model from the TCO article (repo-04):
+
+- Model: measured tokens × `LLM_COST_PER_1K_TOKENS`
+- Platform: `PLATFORM_RUNTIME_COST_PER_RUN`, `PLATFORM_OBSERVABILITY_COST_PER_RUN`, `PLATFORM_CONTROL_COST_PER_RUN`
+- Human review: `HUMAN_APPROVAL_MINUTES` × `HUMAN_REVIEW_RATE_PER_HOUR`, on escalated runs only
+- Remediation: `VIOLATION_REMEDIATION_COST_USD`, on runs that violate policy
+
+The SDK's `ControlPlanePlugin.report_run_cost()` builds one `AgentCostEvent` per run with `run_cost_event()` and posts it to `POST /runs/cost`. The control plane compares it with `max_cost_per_run_usd` from the current policy (v1: $1.00, v2: $0.50). A run over budget gets an `over_budget` verdict and is counted as a breach in the fleet table. Enforcement is the verdict: the agent decides what to do with it, and no agent acts on it yet. Tools, knowledge, and evaluation costs are not modelled yet.
 - Registry and policy state are in-memory and reset on process restart.
 - The `measurements/fleet_metrics.json` file is a placeholder with zeroed values until a demo run populates it.

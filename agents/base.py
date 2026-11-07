@@ -11,15 +11,12 @@ from pydantic import BaseModel
 _DEFAULT_MODEL = "openai/gpt-oss-120b"
 
 
-def _get_model() -> str:
-    return os.environ.get("AIR_MODEL", _DEFAULT_MODEL)
-
-
-def _get_api_key() -> str:
-    key = os.environ.get("AIREFINERY_API_KEY", "").strip()
-    if not key:
-        raise OSError("AIREFINERY_API_KEY must be set (see .env.example)")
-    return key
+def _llm_settings() -> tuple[str, str, str]:
+    missing = [v for v in ("LLM_API_KEY", "LLM_BASE_URL") if not os.environ.get(v, "").strip()]
+    if missing:
+        raise OSError(f"{' and '.join(missing)} must be set (see .env.example)")
+    model = os.environ.get("LLM_MODEL", "").strip() or _DEFAULT_MODEL
+    return os.environ["LLM_API_KEY"].strip(), os.environ["LLM_BASE_URL"].strip(), model
 
 
 def _strip_markdown(text: str) -> str:
@@ -36,9 +33,10 @@ def _strip_markdown(text: str) -> str:
 
 def make_analyze_node(system_prompt: str):
     async def analyze_node(state: dict[str, Any]) -> dict[str, Any]:
-        from air import AsyncAIRefinery
+        from openai import AsyncOpenAI
 
-        client = AsyncAIRefinery(api_key=_get_api_key())
+        api_key, base_url, model = _llm_settings()
+        client = AsyncOpenAI(api_key=api_key, base_url=base_url)
         input_payload = json.dumps(
             {k: v for k, v in state.items() if not k.startswith("_")},
             indent=2,
@@ -46,7 +44,7 @@ def make_analyze_node(system_prompt: str):
         )
         user_content = f"Analyze this data and return ONLY valid JSON:\n{input_payload}"
         response = await client.chat.completions.create(
-            model=_get_model(),
+            model=model,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_content},

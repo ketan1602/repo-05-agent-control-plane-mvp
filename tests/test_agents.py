@@ -79,7 +79,8 @@ def test_risk_output_score_bounds():
 
 
 def test_all_agents_build_harness_without_api_key(monkeypatch):
-    monkeypatch.setenv("AIREFINERY_API_KEY", "test-key")
+    monkeypatch.setenv("LLM_API_KEY", "test-key")
+    monkeypatch.setenv("LLM_BASE_URL", "http://llm.test/v1")
     from agents.inventory_monitor.agent import build_harness as build_im
     from agents.supplier_evaluation.agent import build_harness as build_se
     harness_se = build_se()

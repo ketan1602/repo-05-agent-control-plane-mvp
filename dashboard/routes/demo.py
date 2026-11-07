@@ -16,6 +16,10 @@ class PolicyUpdateBody(BaseModel):
     version: str
 
 
+class SimulateRunsBody(BaseModel):
+    runs_per_agent: int = 20
+
+
 @router.get("/demo")
 async def demo_page() -> FileResponse:
     return FileResponse("dashboard/static/demo.html")
@@ -41,6 +45,16 @@ async def trigger_policy_update(body: PolicyUpdateBody) -> JSONResponse:
         resp = await client.post(
             f"{_CP_URL}/policy/update",
             json={"version": body.version},
+        )
+        return JSONResponse(resp.json(), status_code=resp.status_code)
+
+
+@router.post("/api/demo/simulate-runs")
+async def simulate_runs(body: SimulateRunsBody) -> JSONResponse:
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.post(
+            f"{_CP_URL}/demo/simulate-runs",
+            json={"runs_per_agent": body.runs_per_agent},
         )
         return JSONResponse(resp.json(), status_code=resp.status_code)
 

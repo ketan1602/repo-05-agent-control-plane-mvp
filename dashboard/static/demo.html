@@ -25,6 +25,7 @@
   <div style="display:flex; gap:12px; margin-bottom:20px; align-items:center; flex-wrap:wrap">
     <button class="btn btn-secondary" onclick="initFleet()">Initialize Fleet</button>
     <button id="btn-update-v2" class="btn btn-primary" onclick="triggerUpdate('v2')" disabled>Trigger Policy v2</button>
+    <button id="btn-simulate" class="btn btn-secondary" onclick="simulateRuns()" disabled>Simulate 20 runs per agent</button>
     <button id="btn-reset" class="btn btn-secondary" onclick="resetDemo()" disabled>Reset to v1</button>
     <span id="policy-badge" class="badge badge-muted">Policy: v1</span>
     <span id="propagation-status" class="text-muted" style="font-size:13px"></span>
@@ -42,10 +43,13 @@
           <th>Version</th>
           <th>Policy</th>
           <th>Status</th>
+          <th>Runs</th>
+          <th>Cost / run</th>
+          <th>Budget breaches</th>
         </tr>
       </thead>
       <tbody id="fleet-tbody">
-        <tr><td colspan="4" class="text-muted">Click "Initialize Fleet" to register agents.</td></tr>
+        <tr><td colspan="7" class="text-muted">Click "Initialize Fleet" to register agents.</td></tr>
       </tbody>
     </table>
   </div>
@@ -69,8 +73,18 @@ async function initFleet() {
   const d = await r.json();
   document.getElementById('btn-update-v2').disabled = false;
   document.getElementById('btn-reset').disabled = false;
+  document.getElementById('btn-simulate').disabled = false;
   renderFleet(d);
   startPolling();
+}
+
+async function simulateRuns() {
+  await fetch('/api/demo/simulate-runs', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({runs_per_agent: 20}),
+  });
+  pollFleet();
 }
 
 async function triggerUpdate(version) {
@@ -127,7 +141,7 @@ function renderFleet(data) {
   const total = (data.total_agents ?? 0);
   document.getElementById('confirmed-count').textContent = `${confirmed} / ${total} confirmed`;
   if (!agents.length) {
-    tbody.innerHTML = '<tr><td colspan="4" class="text-muted">No agents registered.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="text-muted">No agents registered.</td></tr>';
     return;
   }
   tbody.innerHTML = agents.map(a => `
@@ -136,6 +150,9 @@ function renderFleet(data) {
       <td>${a.agent_version}</td>
       <td><span class="badge badge-accent">${a.policy_version}</span></td>
       <td>${formatStatus(a.status)}</td>
+      <td>${a.cost.runs}</td>
+      <td>${a.cost.avg_cost_per_run_usd === null ? '—' : '$' + a.cost.avg_cost_per_run_usd.toFixed(2)}</td>
+      <td>${a.cost.breaches}</td>
     </tr>
   `).join('');
 }
